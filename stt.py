@@ -52,17 +52,17 @@ if audio_bytes:
             fd, raw_path = tempfile.mkstemp(
                 suffix=".wav", dir="C:/Users/HP/AppData/Local/Temp"
             )
-            # Close the file descriptor so it's not locked
+            # Close the file descriptor
             os.close(fd)
 
             # Write processed audio to the temp file
             with open(raw_path, "wb") as f:
                 f.write(processed_audio.getvalue())
 
-            # Convert to forward slashes just in case
+            # Converting to forward slashes just in case
             final_path = str(Path(raw_path).resolve()).replace("\\", "/")
 
-            # Now call SpeechBrain to transcribe
+            # calling SpeechBrain to transcribe
             try:
                 transcript = model.convert_speech_to_text(final_path, asr_model)
             finally:
