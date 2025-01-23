@@ -1,7 +1,10 @@
 from speechbrain.inference.ASR import EncoderDecoderASR
 from pydub import AudioSegment
 import streamlit as st
-import io
+import io, os
+import math
+import tempfile
+from pathlib import Path
 
 
 class model:
@@ -24,3 +27,17 @@ class model:
         processed_audio = io.BytesIO()
         audio.export(processed_audio, format="wav")
         return processed_audio
+
+    def convert_speech_to_text_from_buffer(audio_buffer, asr_model):
+        fd, temp_path = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
+        with open(temp_path, "wb") as f:
+            f.write(audio_buffer.getvalue())
+
+        # Transcribe using the path
+        text = asr_model.transcribe_file(temp_path)
+
+        # Clean up
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return text
