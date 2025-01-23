@@ -1,6 +1,7 @@
 from speechbrain.inference.ASR import EncoderDecoderASR
 from pydub import AudioSegment
 import streamlit as st
+import io
 
 
 class model:
@@ -17,8 +18,9 @@ class model:
         return text
 
     def preprocess_audio(input_audio_path):
-        audio = AudioSegment.from_file(input_audio_path)
+        audio = AudioSegment.from_file(input_audio_path, format="wav")
         audio = audio.set_frame_rate(16000).set_channels(1)
-        processed_audio_path = f"processed_{input_audio_path}"
-        audio.export(processed_audio_path, format="wav")
-        return processed_audio_path
+        # processed_audio_path = f"processed_{input_audio_path}"
+        processed_audio = io.BytesIO()
+        audio.export(processed_audio, format="wav")
+        return processed_audio

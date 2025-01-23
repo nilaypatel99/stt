@@ -1,8 +1,12 @@
 import streamlit as st
 from audio_recorder_streamlit import audio_recorder
 import os
+import io
+import tempfile
 import torch
 from model import model
+from pathlib import Path
+
 
 # Check for GPU availability
 device_option = "GPU" if torch.cuda.is_available() else "CPU"
@@ -17,11 +21,10 @@ user_options = st.sidebar.selectbox(
 )
 st.sidebar.info(f"Detected Device: {device_option}")
 
-# Initialize audio_filename to avoid reference errors
-audio_filename = None
-
 # Load the ASR model only once
 asr_model = model.load_asr_model(device)
+
+audio_bytes = None
 
 # --- Option 1: Upload audio ---
 if user_options == "Upload_Audio":
@@ -29,30 +32,45 @@ if user_options == "Upload_Audio":
         "📂 Upload an audio file (WAV, MP3)", type=["wav", "mp3"]
     )
     if uploaded_file:
-        audio_filename = "uploaded_audio.wav"
-        with open(audio_filename, "wb") as f:
-            f.write(uploaded_file.read())
-        st.audio(audio_filename, format="audio/wav")
+        audio_bytes = uploaded_file.read()
+        st.audio(audio_bytes, format="audio/wav")
 
 # --- Option 2: Record audio ---
 elif user_options == "Record_Audio":
     audio_data = audio_recorder("Click here to Record")
     if audio_data:
-        audio_filename = "recorded_audio.wav"
-        with open(audio_filename, "wb") as f:
-            f.write(audio_data)
-        st.audio(audio_filename, format="audio/wav")
+        audio_bytes = audio_data
+        st.audio(audio_bytes, format="audio/wav")
 
-# --- Perform transcription if we have a valid file ---
-if audio_filename and os.path.exists(audio_filename):
+# --- Perform transcription if we have valid audio bytes ---
+if audio_bytes:
     with st.spinner("🔄 Transcribing audio... Please wait."):
         try:
-            # Preprocess the audio
-            processed_audio = model.preprocess_audio(audio_filename)
-            # Convert speech to text
-            transcript = model.convert_speech_to_text(processed_audio, asr_model)
-            st.success("✅ Transcription completed successfully!")
+            # Preprocess the audio (returns BytesIO)
+            processed_audio = model.preprocess_audio(io.BytesIO(audio_bytes))
+            # using temporary storage
+            fd, raw_path = tempfile.mkstemp(
+                suffix=".wav", dir="C:/Users/HP/AppData/Local/Temp"
+            )
+            # Close the file descriptor so it's not locked
+            os.close(fd)
 
+            # Write processed audio to the temp file
+            with open(raw_path, "wb") as f:
+                f.write(processed_audio.getvalue())
+
+            # Convert to forward slashes just in case
+            final_path = str(Path(raw_path).resolve()).replace("\\", "/")
+
+            # Now call SpeechBrain to transcribe
+            try:
+                transcript = model.convert_speech_to_text(final_path, asr_model)
+            finally:
+                # Clean up the file after transcription
+                if os.path.exists(raw_path):
+                    os.remove(raw_path)
+
+            st.success("✅ Transcription completed successfully!")
             # Display transcription
             st.text_area("Transcribed Text:", transcript, height=200)
 
