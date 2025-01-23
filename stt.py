@@ -1,19 +1,15 @@
 import streamlit as st
 from audio_recorder_streamlit import audio_recorder
-from speechbrain.inference.ASR import EncoderDecoderASR
 import os
 import torch
-from pydub import AudioSegment
+from model import model
 
 # Check for GPU availability
 device_option = "GPU" if torch.cuda.is_available() else "CPU"
 device = "cuda" if device_option == "GPU" else "cpu"
 
 # Page title
-st.markdown(
-    '<p class="main-title">🎙️ Speech-to-Text Transcription</p>', unsafe_allow_html=True
-)
-
+st.title("🎙️ Speech-to-Text Transcription")
 # Sidebar
 st.sidebar.title("Settings")
 user_options = st.sidebar.selectbox(
@@ -24,34 +20,8 @@ st.sidebar.info(f"Detected Device: {device_option}")
 # Initialize audio_filename to avoid reference errors
 audio_filename = None
 
-
-# Function to convert speech to text
-@st.cache_resource  # Optional: cache model download to speed up subsequent runs
-def load_asr_model(device):
-    return EncoderDecoderASR.from_hparams(
-        source="speechbrain/asr-conformer-transformerlm-librispeech",
-        savedir="pretrained_models/asr-transformer-transformerlm-librispeech",
-        run_opts={"device": device},
-    )
-
-
-def convert_speech_to_text(audio_path, asr_model):
-    text = asr_model.transcribe_file(audio_path)
-    return text
-
-
-# Audio Preprocessing
-def preprocess_audio(input_audio_path):
-    """Convert to mono 16 kHz WAV format."""
-    audio = AudioSegment.from_file(input_audio_path)
-    audio = audio.set_frame_rate(16000).set_channels(1)
-    processed_audio_path = f"processed_{input_audio_path}"
-    audio.export(processed_audio_path, format="wav")
-    return processed_audio_path
-
-
 # Load the ASR model only once
-asr_model = load_asr_model(device)
+asr_model = model.load_asr_model(device)
 
 # --- Option 1: Upload audio ---
 if user_options == "Upload_Audio":
@@ -78,9 +48,9 @@ if audio_filename and os.path.exists(audio_filename):
     with st.spinner("🔄 Transcribing audio... Please wait."):
         try:
             # Preprocess the audio
-            processed_audio = preprocess_audio(audio_filename)
+            processed_audio = model.preprocess_audio(audio_filename)
             # Convert speech to text
-            transcript = convert_speech_to_text(processed_audio, asr_model)
+            transcript = model.convert_speech_to_text(processed_audio, asr_model)
             st.success("✅ Transcription completed successfully!")
 
             # Display transcription
