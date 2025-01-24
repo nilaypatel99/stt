@@ -43,7 +43,7 @@ elif user_options == "Record_Audio":
         audio_bytes = audio_data
         st.audio(audio_bytes, format="audio/wav")
 
-# --- Perform transcription ---
+# --- Transcription ---
 if audio_bytes:
     with st.spinner("🔄 Transcribing audio... Please wait."):
         try:
@@ -78,7 +78,7 @@ if audio_bytes:
                 time_single = time.time() - start_time_single
 
             finally:
-                # Clean up the file after transcription
+
                 if os.path.exists(raw_path):
                     os.remove(raw_path)
 
